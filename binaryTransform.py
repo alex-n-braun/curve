@@ -4,17 +4,21 @@
 import cv2
 import numpy as np
 
+def normimg(img):
+    return np.uint8(255*img/np.max(img))
+
 # Define a function to return the magnitude of the gradient
 # for a given sobel kernel size and threshold values
-def mag_thresh(gray, sobel_kernel=3, thresh=(100, 255)):
+def mag_thresh(gray, sobel_kernel=3, thresh=(100, 255), nrm=normimg):
     # Take both Sobel x and y gradients
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
     sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
     # Calculate the gradient magnitude
     gradmag = np.sqrt(sobelx**2 + sobely**2)
     # Rescale to 8 bit
-    scale_factor = np.max(gradmag)/255 
-    gradmag = (gradmag/scale_factor).astype(np.uint8) 
+    #scale_factor = np.max(gradmag)/255 
+    #gradmag = (gradmag/scale_factor).astype(np.uint8) 
+    gradmag = nrm(gradmag)
     # Create a binary image of ones where threshold is met, zeros otherwise
     binary_output = np.zeros_like(gradmag)
     binary_output[(gradmag >= thresh[0]) & (gradmag <= thresh[1])] = 1
@@ -25,7 +29,7 @@ def mag_thresh(gray, sobel_kernel=3, thresh=(100, 255)):
 # Define a function that applies Sobel x and y, combines both to 
 # a directional derivative in direction alpha,
 # then takes an absolute value and applies a threshold.
-def dir_sobel_thresh(gray, sobel_kernel=3, alpha=0, thresh=(125, 255)):
+def dir_sobel_thresh(gray, sobel_kernel=3, alpha=0, thresh=(125, 255), nrm=normimg):
     # Apply x or y gradient with the OpenCV Sobel() function
     # and take the absolute value
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
@@ -35,7 +39,8 @@ def dir_sobel_thresh(gray, sobel_kernel=3, alpha=0, thresh=(125, 255)):
     sobel=dx*sobelx+dy*sobely
     abs_sobel=np.absolute(sobel)
     # Rescale back to 8 bit integer
-    scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
+    #scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
+    scaled_sobel = nrm(abs_sobel)
     # Create a copy and apply the threshold
     binary_output = np.zeros_like(scaled_sobel)
     binary_output[(scaled_sobel >= thresh[0]) & (scaled_sobel <= thresh[1])] = 1
@@ -45,7 +50,7 @@ def dir_sobel_thresh(gray, sobel_kernel=3, alpha=0, thresh=(125, 255)):
 
 
 # Define a function to threshold an image for a given range and Sobel kernel
-def dirabs_threshold(gray, sobel_kernel=3, thresh=(0, np.pi/2)):
+def dirabs_threshold(gray, sobel_kernel=3, thresh=(0, np.pi/2), nrm=normimg):
     # Calculate the x and y gradients
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
     sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
@@ -57,10 +62,10 @@ def dirabs_threshold(gray, sobel_kernel=3, thresh=(0, np.pi/2)):
 
     # Return the binary image
     absgraddir=np.absolute(absgraddir)
-    return binary_output, np.uint8(255*absgraddir/np.max(absgraddir))
+    return binary_output, nrm(absgraddir)
 
 # Define a function to threshold an image for a given range and Sobel kernel
-def dir_threshold(gray, sobel_kernel=3, thresh=(0, np.pi/2)):
+def dir_threshold(gray, sobel_kernel=3, thresh=(0, np.pi/2), nrm=normimg):
     # Calculate the x and y gradients
     sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
     sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
@@ -72,6 +77,6 @@ def dir_threshold(gray, sobel_kernel=3, thresh=(0, np.pi/2)):
 
     # Return the binary image
     graddir=np.absolute(graddir)
-    return binary_output, np.uint8(255*graddir/np.max(graddir))
+    return binary_output, nrm(graddir)
 
 
