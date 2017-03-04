@@ -52,4 +52,88 @@ def unwarpFactory():
     ## Given src and dst points, calculate the perspective transform matrix
     #M = cv2.getPerspectiveTransform(src, dst)
     return lambda x: cv2.warpPerspective(x, M, (x.shape[1], x.shape[0]))
+
+# findLanes_windowed() as described in main.ipynb, section "Identifying lane lines"
+def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50):
+    # take a histogram of the lower half of the image:
+    histogram = np.sum(warped[360:,:], axis=0)
+    
+    # apply some smoothing. I use a convolution with
+    # Gaussian kernel
+    s=sigma
+    n=np.array(range(3*s), dtype=np.double)
+    kernel=np.exp(-((n-1.5*s)/(2*s))**2)
+    norm=sum(kernel)
+    hc=np.convolve(histogram, np.array(kernel, dtype=np.double)/norm, mode='same')
+
+    # Find the peak of the left and right halves of the histogram
+    # These will be the starting point for the left and right lines
+    midpoint = np.int(hc.shape[0]/2)
+    leftx_base = np.argmax(hc[:midpoint])
+    rightx_base = np.argmax(hc[midpoint:]) + midpoint
+    
+    # Set height of windows
+    window_height = np.int(warped.shape[0]/nwindows)
+    # Identify the x and y positions of all nonzero pixels in the image
+    nonzero = warped.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    # Current positions to be updated for each window
+    leftx_current = leftx_base
+    rightx_current = rightx_base
+    
+    # Create empty lists to receive left and right lane pixel indices
+    left_lane_inds = []
+    right_lane_inds = []
+    
+    # Step through the windows one by one
+    for window in range(nwindows):
+        # Identify window boundaries in x and y (and right and left)
+        win_y_low = warped.shape[0] - (window+1)*window_height
+        win_y_high = warped.shape[0] - window*window_height
+        win_xleft_low = leftx_current - margin
+        win_xleft_high = leftx_current + margin
+        win_xright_low = rightx_current - margin
+        win_xright_high = rightx_current + margin
+
+        # Identify the nonzero pixels in x and y within the window
+        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & ...
+                          (nonzerox >= win_xleft_low) & (nonzerox < win_xleft_high)).nonzero()[0]
+        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & ...
+                           (nonzerox >= win_xright_low) & (nonzerox < win_xright_high)).nonzero()[0]
+        # Append these indices to the lists
+        left_lane_inds.append(good_left_inds)
+        right_lane_inds.append(good_right_inds)
+        # If you found > minpix pixels, recenter next window on their mean position
+        if len(good_left_inds) > minpix:
+            leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+        if len(good_right_inds) > minpix:        
+            rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+
+    # Concatenate the arrays of indices
+    left_lane_inds = np.concatenate(left_lane_inds)
+    right_lane_inds = np.concatenate(right_lane_inds)
+
+    # Extract left and right line pixel positions
+    leftx = nonzerox[left_lane_inds]
+    lefty = nonzeroy[left_lane_inds] 
+    rightx = nonzerox[right_lane_inds]
+    righty = nonzeroy[right_lane_inds] 
+
+    # Fit a second order polynomial to each
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
+
+    return left_fit, right_fit
+
+def drawLanes_warped():
+    return 0
+
+
+
+
+
+
+
+
     
