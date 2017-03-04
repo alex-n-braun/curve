@@ -123,7 +123,7 @@ plt.imshow(undistortImg(image, mtx, dist))
 
 
 
-    <matplotlib.image.AxesImage at 0x7f5a1bf17da0>
+    <matplotlib.image.AxesImage at 0x7f4fa9bbe470>
 
 
 
@@ -512,7 +512,7 @@ plt.plot(hc)
 
 
 
-    [<matplotlib.lines.Line2D at 0x7f5a2005eba8>]
+    [<matplotlib.lines.Line2D at 0x7f4fa96b8898>]
 
 
 
@@ -646,10 +646,134 @@ plt.ylim(720, 0)
 ![png](output_44_1.png)
 
 
-That's it for lane finding. The above code is contained in `pipeline.py`, `findLanes_windowed()` (without illustration), and the illustration of the lane finding in `drawLanes_warped()` (without the windows being drawn). Finally I use this code to identify the lanes in three example images:
+That's it for lane finding. The above code is contained in `pipeline.py`, `findLanes_windowed()` (without illustration), and the illustration of the lane finding in `drawLanes_warped()` (without the windows being drawn). The coefficients for the second order polynomial are computed here with a unit conversion from pixels to meters, which we will need lateron for the computation of curvature in meters. Finally I use this code to identify the lanes in three example images:
+
+
+```python
+from pipeline import findLanes_windowed, drawLanes_warped
+
+warpFun=warpFactory()
+
+I=(0, 5, 6)
+plt.figure(figsize=(14,12))
+for i in (0,1,2):
+    plt.subplot(3, 2, 1+i*2)
+    rgb=bgr_rgb(undistTestImages[I[i]])
+    plt.imshow(rgb)
+    b=binarypipeline(undistTestImages[I[i]])
+    warped = warpFun(b)
+    nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
+    plt.subplot(3, 2, 2+i*2)
+    drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit)
+
+
+```
+
+
+![png](output_46_0.png)
+
+
+### Computing Curvature Radius, Vehicle Position
+
+- Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+
+Now we already have the polynomial coefficients returned from the function call `findLanes_windowed()` in the correct units. This allows for the direct computation of the lane curvature radius in meters. The curvature is evaluated at the position of the car, hence `y_eval=720`, for the three example images above.
+
+The values for the unit conversion are chosen as
+
+- 3.7m per 700 pixels in x direction (default value from the lesson, matches very nicely with the straight lanes image)
+- 3m per 50 pixels in y direction (estimated from looking at the warped color image of the straight lane, the dashed lane lines are assumed to be 3 meters long).
+
+In addition, I compute the position of the vehicle in meters, relative to the lane center. As specified in the rubric, I have to look for the difference of the midpoint of the lane from the center of the image. Therefore I evaluate the polynomials at the position of the car.
+
 
 
 ```python
 from pipeline import findLanes_windowed
+
+warpFun=warpFactory()
+ym_per_pix = 3/50
+y_eval=720
+y_m=y_eval*ym_per_pix
+xm_per_pix = 3.7/700
+x_eval=undistTestImages[I[i]].shape[1]/2
+x_m=x_eval*xm_per_pix
+
+I=(0, 5, 6)
+for i in (0,1,2):
+    b=binarypipeline(undistTestImages[I[i]])
+    warped = warpFun(b)
+    nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(
+        warped, ym_per_pix = 3/50, xm_per_pix = 3.7/700)
+    # Calculate the new radii of curvature
+    left_curverad = ((1 + (2*left_fit[0]*y_m + left_fit[1])**2)**1.5) / np.absolute(2*left_fit[0])
+    right_curverad = ((1 + (2*right_fit[0]*y_m + right_fit[1])**2)**1.5) / np.absolute(2*right_fit[0])
+    # Calculate the position of the car. First: position of the two lanes, midpoint:
+    pos_left = left_fit[0]*y_m**2 + left_fit[1]*y_m + left_fit[2]
+    pos_right = right_fit[0]*y_m**2 + right_fit[1]*y_m + right_fit[2]
+    pos_mid = 0.5 * (pos_right + pos_left)
+    # difference to center of the image
+    pos_car = x_m - pos_mid
+    # Now our radius of curvature is in meters
+    print('Radius: ', left_curverad, 'm', right_curverad, 'm; Pos. Car: ', pos_car, 'm')
+
+```
+
+    Radius:  9394.78920688 m 36980.7997028 m; Pos. Car:  -0.0863820282633 m
+    Radius:  915.930496963 m 958.423424473 m; Pos. Car:  -0.289145885587 m
+    Radius:  413.901367236 m 259.477498543 m; Pos. Car:  -0.257836678498 m
+
+
+The values for the curvature radius look reasonable; for the straight lanes it could even be infinite, the second one with curvature is in a reasonable range (compare [U.S. government specifications for highway curvature](http://onlinemanuals.txdot.gov/txdotmanuals/rdw/horizontal_alignment.htm#BGBHGEGC)), for the third one the computed radius is too small, which fits with the not so nice performance of the lane detection.
+
+### Visualization
+- Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+
+Again I take a code snippet I found in the lessons material. Drawing the lane marking on the image is done in the function `drawLane3d()` in `pipeline.py`.
+
+
+```python
+from pipeline import findLanes_windowed, drawLanes_warped, warpFactory, unwarpFactory, drawLane3d
+
+warpFun = warpFactory()
+unwarpFun = unwarpFactory()
+
+I=(0, 5, 6)
+plt.figure(figsize=(14,12))
+for i in (0,1,2):
+    plt.subplot(3, 2, 1+i*2)
+    rgb=bgr_rgb(undistTestImages[I[i]])
+    plt.imshow(rgb)
+    b=binarypipeline(undistTestImages[I[i]])
+    warped = warpFun(b)
+    nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
+    img = drawLane3d(undistTestImages[I[i]], left_fit, right_fit, unwarpFun)
+    plt.subplot(3, 2, 2+i*2)
+    plt.imshow(bgr_rgb(img))
+    
+
+```
+
+
+![png](output_51_0.png)
+
+
+:-)
+
+## Pipeline (Video)
+---
+- Provide a link to your final video output. Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!)
+
+Before processing the video, I want to add memory to ...
+
+## Discussion
+---
+
+- Briefly discuss any problems / issues you faced in your implementation of this project. Where will your pipeline likely fail? What could you do to make it more robust?
+
+
+
+
+```python
 
 ```

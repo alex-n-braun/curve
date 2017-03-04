@@ -153,6 +153,42 @@ def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds
     plt.xlim(0, 1280)
     plt.ylim(720, 0)
 
+# drawLane3d(): Draw lane marking on an image
+# img: image to be drawn on
+# left_fit, right_fit: coefficients of 2nd order polynomial which have been 
+#     computed for the lane lines on the image, for example using
+#     findLanes_windowed()
+# unwarpFun: function to perform the inverse perspective transform.
+#     can be created using unwarpFactory()
+# ym_per_pix, xpix_per_m: unit conversions pixels <=> meters
+def drawLane3d(img, left_fit, right_fit, unwarpFun, ym_per_pix = 3/50, xpix_per_m = 700/3.7):
+    # Create an image to draw the lines on
+    color_warp = np.zeros_like(img).astype(np.uint8)
+    
+    # y values
+    ploty = np.linspace(0, 719, num=720)
+    # convert to meters
+    plotym = ym_per_pix * ploty
+    # evaluate polynomial & convert to pixels
+    left_fitxm = left_fit[0]*plotym**2 + left_fit[1]*plotym + left_fit[2]
+    left_fitx = xpix_per_m * left_fitxm
+    right_fitxm = right_fit[0]*plotym**2 + right_fit[1]*plotym + right_fit[2]
+    right_fitx = xpix_per_m * right_fitxm
+
+    # Recast the x and y points into usable format for cv2.fillPoly()
+    pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    pts = np.hstack((pts_left, pts_right))
+
+    # Draw the lane onto the warped blank image
+    cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+
+    # Warp the blank back to original image space using inverse perspective matrix
+    # see unwarpFactory(), pipeline.py
+    newwarp = unwarpFun(color_warp)
+    # Combine the result with the original image
+    result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+    return result
 
 
 
