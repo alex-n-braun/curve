@@ -55,7 +55,7 @@ def unwarpFactory():
     return lambda x: cv2.warpPerspective(x, M, (x.shape[1], x.shape[0]))
 
 # findLanes_windowed() as described in main.ipynb, section "Identifying lane lines"
-def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50):
+def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50, ym_per_pix = 3/50, xm_per_pix = 3.7/700):
     # take a histogram of the lower half of the image:
     histogram = np.sum(warped[360:,:], axis=0)
     
@@ -121,17 +121,27 @@ def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50
     rightx = nonzerox[right_lane_inds]
     righty = nonzeroy[right_lane_inds] 
 
-    # Fit a second order polynomial to each
-    left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)
+    # Define conversions in x and y from pixels space to meters
+    # as function arguments
+    # ym_per_pix = 30/720 # meters per pixel in y dimension
+    # xm_per_pix = 3.7/700 # meters per pixel in x dimension
+    
+    # Fit a second order polynomial to each, in meters
+    left_fit = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
+    right_fit = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
 
     return nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit
 
-def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit):
+def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit, ym_per_pix = 3/50, xpix_per_m = 700/3.7):
+    # ym_per_pix and xpix_per_m define conversions in x and y from pixels space to meters
+    # as function arguments
+    # ym_per_pix = 30/720 # meters per pixel in y dimension
+    # xpix_per_m = 700/3.7 # pixels per meter in x dimension
+
     # Generate x and y values for plotting
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
-    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
-    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+    left_fitx = (left_fit[0]*(ploty*ym_per_pix)**2 + left_fit[1]*(ploty*ym_per_pix) + left_fit[2])*xpix_per_m
+    right_fitx = (right_fit[0]*(ploty*ym_per_pix)**2 + right_fit[1]*(ploty*ym_per_pix) + right_fit[2])*xpix_per_m
 
     out_img=np.dstack((warped, warped, warped))*255
     
