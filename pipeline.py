@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from binaryTransform import mag_thresh
 from helpers import *
+import matplotlib.pyplot as plt
 
 # normalize the _lower_ part (containing the street) to the range 0...255
 def normstreet(channel):
@@ -97,9 +98,9 @@ def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50
         win_xright_high = rightx_current + margin
 
         # Identify the nonzero pixels in x and y within the window
-        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & ...
+        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & 
                           (nonzerox >= win_xleft_low) & (nonzerox < win_xleft_high)).nonzero()[0]
-        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & ...
+        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & 
                            (nonzerox >= win_xright_low) & (nonzerox < win_xright_high)).nonzero()[0]
         # Append these indices to the lists
         left_lane_inds.append(good_left_inds)
@@ -124,16 +125,28 @@ def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50
     left_fit = np.polyfit(lefty, leftx, 2)
     right_fit = np.polyfit(righty, rightx, 2)
 
-    return left_fit, right_fit
+    return nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit
 
-def drawLanes_warped():
-    return 0
+def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit):
+    # Generate x and y values for plotting
+    ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
+    left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+    right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
 
-
-
-
-
-
-
-
+    out_img=np.dstack((warped, warped, warped))*255
     
+    out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+    out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+    plt.imshow(out_img)
+    plt.plot(left_fitx, ploty, color='yellow')
+    plt.plot(right_fitx, ploty, color='yellow')
+    plt.xlim(0, 1280)
+    plt.ylim(720, 0)
+
+
+
+
+
+
+
+
