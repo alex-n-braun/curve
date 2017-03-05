@@ -33,7 +33,7 @@ def binarypipeline(img):
 # factory for perspective transform from src to dst
 def srcdst():
     h=720
-    src=np.float32([[596, 450], [686, 450], [1105, h-1], [205, h-1]])
+    src=np.float32([[596, 450], [686, 450], [1027, h-50], [276, h-50]])
     offset=100
     dst = np.float32([[305, offset], [1005, offset], 
                                          [1005, h-1], 
@@ -132,7 +132,44 @@ def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50
 
     return nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit
 
-def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit, ym_per_pix = 3/50, xpix_per_m = 700/3.7):
+def findLanes_reuse(warped, left_fit, right_fit, margin = 100, ym_per_pix = 3/50, xm_per_pix = 3.7/700):
+    def marginCalc(fit, margin):
+        #m=np.ones_like(fit)*margin*xm_per_pix
+        #z=np.zeros_like(fit)
+        #m=np.maximum(np.minimum(1280*xm_per_pix-fit, m), z)
+        #m=np.maximum(np.minimum(fit, m), z)
+        return margin*xm_per_pix
+        
+    # Assume you now have a new warped binary image 
+    # from the next frame of video (also called "binary_warped")
+    # It's now much easier to find line pixels!
+    nonzero = warped.nonzero()
+    nonzeroy = np.array(nonzero[0])
+    nonzerox = np.array(nonzero[1])
+    nonzeroym = nonzeroy*ym_per_pix
+    nonzeroxm = nonzerox*xm_per_pix
+
+    lf=left_fit[0]*(nonzeroym**2) + left_fit[1]*nonzeroym + left_fit[2]
+    rf=right_fit[0]*(nonzeroym**2) + right_fit[1]*nonzeroym + right_fit[2]
+    lm=marginCalc(lf, margin)
+    rm=marginCalc(rf, margin)
+    left_lane_inds = ((nonzeroxm > (lf - lm)) & 
+                      (nonzeroxm < (lf + lm))) 
+    right_lane_inds = ((nonzeroxm > (rf - rm)) & 
+                       (nonzeroxm < (rf + rm)))  
+
+    # Again, extract left and right line pixel positions in meters
+    leftx = nonzeroxm[left_lane_inds]
+    lefty = nonzeroym[left_lane_inds] 
+    rightx = nonzeroxm[right_lane_inds]
+    righty = nonzeroym[right_lane_inds]
+    # Fit a second order polynomial to each, in meters
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
+    return nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit
+
+
+def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit, ym_per_pix = 3/50, xpix_per_m = 700/3.7, col_line=(0, 255, 255)):
     # ym_per_pix and xpix_per_m define conversions in x and y from pixels space to meters
     # as function arguments
     # ym_per_pix = 30/720 # meters per pixel in y dimension
@@ -143,15 +180,20 @@ def drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds
     left_fitx = (left_fit[0]*(ploty*ym_per_pix)**2 + left_fit[1]*(ploty*ym_per_pix) + left_fit[2])*xpix_per_m
     right_fitx = (right_fit[0]*(ploty*ym_per_pix)**2 + right_fit[1]*(ploty*ym_per_pix) + right_fit[2])*xpix_per_m
 
-    out_img=np.dstack((warped, warped, warped))*255
+    if (len(warped.shape)==2):
+        out_img=np.dstack((warped, warped, warped))*255
+    else:
+        out_img=np.uint8(warped)
     
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-    plt.imshow(out_img)
-    plt.plot(left_fitx, ploty, color='yellow')
-    plt.plot(right_fitx, ploty, color='yellow')
-    plt.xlim(0, 1280)
-    plt.ylim(720, 0)
+    pts = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    out_img=cv2.polylines(out_img, np.int32(pts), 0, col_line, 2)
+    pts = np.array([np.transpose(np.vstack([right_fitx, ploty]))])
+    out_img=cv2.polylines(out_img, np.int32(pts), 0, col_line, 2)
+    
+    return out_img
+
 
 # drawLane3d(): Draw lane marking on an image
 # img: image to be drawn on
