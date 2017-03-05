@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from binaryTransform import mag_thresh
+from binaryTransform import mag_thresh, dir_sobel_thresh
 from helpers import *
 import matplotlib.pyplot as plt
 
@@ -14,7 +14,7 @@ def binarypipeline(img):
     hsv=bgr_hsv(img)
     # combute binary image based on color threshold on S channel
     hls_bin = np.zeros_like(hls[:,:,2])
-    hls_bin[(normstreet(hls[:,:,2]) >= 150) & (normstreet(hls[:,:,2]) <= 240)] = 1
+    hls_bin[(normstreet(hls[:,:,2]) >= 110) & (normstreet(hls[:,:,2]) <= 240)] = 1
     
     #b_s, s=dirabs_threshold(hls[:,:,2], sobel_kernel=5, thresh=(0.9, 1.1))
     #b_v, v=dirabs_threshold(hsv[:,:,2], sobel_kernel=5, thresh=(0.9, 1.1))
@@ -22,8 +22,10 @@ def binarypipeline(img):
     b = np.zeros_like(hls_bin)
     #b[(b_s==1) & (b_v==1)]=1
     
-    b_s, s=mag_thresh(hls[:,:,2], sobel_kernel=11, thresh=(80, 255), nrm=normstreet)
-    b_v, s=mag_thresh(hsv[:,:,2], sobel_kernel=11, thresh=(60, 255), nrm=normstreet)
+    b_s, s=dir_sobel_thresh(hls[:,:,2], sobel_kernel=11, alpha=0, thresh=(40, 255)) #np.arctan(-400/300)
+    b_v, s=dir_sobel_thresh(hsv[:,:,2], sobel_kernel=11, alpha=0, thresh=(30, 255))
+    #b_s, s=mag_thresh(hls[:,:,2], sobel_kernel=11, thresh=(80, 255), nrm=normstreet)
+    #b_v, s=mag_thresh(hsv[:,:,2], sobel_kernel=11, thresh=(60, 255), nrm=normstreet)
     b[(b==1) | (b_s==1) | (b_v==1)] = 1
     
     b[(b==1) | (hls_bin==1)] = 1
@@ -55,7 +57,7 @@ def unwarpFactory():
     return lambda x: cv2.warpPerspective(x, M, (x.shape[1], x.shape[0]))
 
 # findLanes_windowed() as described in main.ipynb, section "Identifying lane lines"
-def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 50, ym_per_pix = 3/50, xm_per_pix = 3.7/700):
+def findLanes_windowed(warped, sigma=20, nwindows = 9, margin = 100, minpix = 200, ym_per_pix = 3/50, xm_per_pix = 3.7/700):
     # take a histogram of the lower half of the image:
     histogram = np.sum(warped[360:,:], axis=0)
     
