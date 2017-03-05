@@ -17,11 +17,12 @@ The goals / steps of this project are the following:
 ## Contents of the Submission
 ---
 The submission containes the following files and folders.
-1. `README.md`, along with several `output*.png` files containing the graphics. Created from:
+1. `README.md`, along with several `output*.png` files containing the graphics. 
 2. `main.ipynb`, the notebook containing the documentation and sources. 
-3. `helpers.py`, several shortcuts for color space transforms
+3. `helpers.py`, several shortcuts for color space transforms and some more things
 4. `binaryTransform.py`, several functions for converting an image to black an white.
 5. `pipeline.py`, the final pipeline for processing an image sequence.
+6. `project_video_out.mp3`, the processed video.
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 ---
@@ -123,7 +124,7 @@ plt.imshow(undistortImg(image, mtx, dist))
 
 
 
-    <matplotlib.image.AxesImage at 0x7f4fa9bbe470>
+    <matplotlib.image.AxesImage at 0x7ffa09aa1940>
 
 
 
@@ -325,7 +326,7 @@ for i in (0,1,2):
     
     hls=bgr_hls(undistTestImages[I[i]])
     hls_bin = np.zeros_like(hls[:,:,2])
-    hls_bin[(hls[:,:,2] >= 150) & (hls[:,:,2] <= 240)] = 1
+    hls_bin[(hls[:,:,2] >= 110) & (hls[:,:,2] <= 240)] = 1
     plt.subplot(3, 3, 4+i)
     plt.imshow(hls_bin, cmap='gray')
     
@@ -353,8 +354,8 @@ for i in (0,1,2):
     plt.imshow(bgr_rgb(undistTestImages[I[i]]))
     
     hls=bgr_hls(undistTestImages[I[i]])
-    #b_hls, s=dir_sobel_thresh(hls[:,:,2], sobel_kernel=7, alpha=np.arctan(-400/300), thresh=(90, 255))
-    b_hls, s=mag_thresh(hls[:,:,2], sobel_kernel=11, thresh=(80, 255))
+    b_hls, s=dir_sobel_thresh(hls[:,:,2], sobel_kernel=11, alpha=0, thresh=(40, 255)) #np.arctan(-400/300)
+    #b_hls, s=mag_thresh(hls[:,:,2], sobel_kernel=11, thresh=(80, 255))
     #b_hls, s=dirabs_threshold(hls[:,:,2], sobel_kernel=15, thresh=(0.9, 1.1))
     plt.subplot(5, 3, 4+i)
     plt.imshow(s, cmap='gray')
@@ -362,8 +363,8 @@ for i in (0,1,2):
     plt.imshow(b_hls, cmap='gray')
     
     hsv=bgr_hsv(undistTestImages[I[i]])
-    #b_hsv, s=dir_sobel_thresh(hsv[:,:,2], sobel_kernel=7, alpha=np.arctan(-400/300), thresh=(90, 255))
-    b_hsv, s=mag_thresh(hsv[:,:,2], sobel_kernel=11, thresh=(60, 255))
+    b_hsv, s=dir_sobel_thresh(hsv[:,:,2], sobel_kernel=11, alpha=0, thresh=(30, 255))
+    #b_hsv, s=mag_thresh(hsv[:,:,2], sobel_kernel=11, thresh=(60, 255))
     #b_hsv, s=dirabs_threshold(hsv[:,:,2], sobel_kernel=15, thresh=(0.9, 1.1))
     plt.subplot(5, 3, 10+i)
     plt.imshow(s, cmap='gray')
@@ -435,6 +436,21 @@ for i in (0,1,2):
 ![png](output_30_0.png)
 
 
+
+```python
+dst
+```
+
+
+
+
+    array([[  305.,   100.],
+           [ 1005.,   100.],
+           [ 1005.,   719.],
+           [  305.,   719.]], dtype=float32)
+
+
+
 The source and destination points are hardcoded in `srcdst()`, `pipeline.py`, with the following values:
 
 | Source        | Destination   | 
@@ -471,7 +487,7 @@ for i in (0,1,2):
 ```
 
 
-![png](output_32_0.png)
+![png](output_33_0.png)
 
 
 ### Identifying lane lines
@@ -489,7 +505,7 @@ Since a lane may be split into two (most probably because of the gradients on th
 from pipeline import warpFactory
 
 warpFun=warpFactory()
-img=undistTestImages[0]
+img=undistTestImages[5]
 b=binarypipeline(img)
 warped = warpFun(b)
 plt.imshow(warped, cmap='gray')
@@ -512,12 +528,12 @@ plt.plot(hc)
 
 
 
-    [<matplotlib.lines.Line2D at 0x7f4fa96b8898>]
+    [<matplotlib.lines.Line2D at 0x7ffa09c709b0>]
 
 
 
 
-![png](output_34_1.png)
+![png](output_35_1.png)
 
 
 Next, I find the positions of the lanes by looking for the maximum values in the histogram in the left and the right half.
@@ -550,7 +566,7 @@ rightx_current = rightx_base
 # Set the width of the windows +/- margin
 margin = 100
 # Set minimum number of pixels found to recenter window
-minpix = 50
+minpix = 200
 # Create empty lists to receive left and right lane pixel indices
 left_lane_inds = []
 right_lane_inds = []
@@ -596,7 +612,7 @@ right_lane_inds = np.concatenate(right_lane_inds)
 ```
 
 
-![png](output_40_0.png)
+![png](output_41_0.png)
 
 
 Finally get the x and y positions of the nonzero pixels identified by the index lists, and perform a second order polynomial fit. This then allows to extract lane curvature and slope, which will be the next step.
@@ -643,17 +659,16 @@ plt.ylim(720, 0)
 
 
 
-![png](output_44_1.png)
+![png](output_45_1.png)
 
 
-That's it for lane finding. The above code is contained in `pipeline.py`, `findLanes_windowed()` (without illustration), and the illustration of the lane finding in `drawLanes_warped()` (without the windows being drawn). The coefficients for the second order polynomial are computed here with a unit conversion from pixels to meters, which we will need lateron for the computation of curvature in meters. Finally I use this code to identify the lanes in three example images:
+That's it for lane finding. The above code is contained in `pipeline.py`, `findLanes_windowed()` (without illustration), and the illustration of the lane finding in `drawLanes_warped()` (without the windows being drawn). There is one more lane line finding function, `findLanes_reuse()`, which makes use of the polynomial coefficients from the previous step, as described in the lecture. The coefficients for the second order polynomial are computed here with a unit conversion from pixels to meters, which we will need lateron for the computation of curvature in meters. Finally I use this code to identify the lanes in three example images:
 
 
 ```python
-from pipeline import findLanes_windowed, drawLanes_warped
+from pipeline import findLanes_windowed, findLanes_reuse, drawLanes_warped
 
 warpFun=warpFactory()
-
 I=(0, 5, 6)
 plt.figure(figsize=(14,12))
 for i in (0,1,2):
@@ -662,29 +677,49 @@ for i in (0,1,2):
     plt.imshow(rgb)
     b=binarypipeline(undistTestImages[I[i]])
     warped = warpFun(b)
-    nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
+    nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped, minpix=200)
+    img=drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit)
+    nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_reuse(warped, left_fit, right_fit)
+    img=drawLanes_warped(img, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit, col_line=(0, 255, 0))
     plt.subplot(3, 2, 2+i*2)
-    drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit)
+    plt.imshow(bgr_rgb(img))
+    
 
 
 ```
 
 
-![png](output_46_0.png)
+![png](output_47_0.png)
 
 
-### Computing Curvature Radius, Vehicle Position
+For the third example, stable detection of the right lane line with the given pipeline is not possible. However, reusing the polynomials from the last video frame using `findLanes_reuse()` will improve the situation, as will be demonstrated later.
+
+### Computing Curvature Radius, Vehicle Position, and some more numbers
 
 - Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-Now we already have the polynomial coefficients returned from the function call `findLanes_windowed()` in the correct units. This allows for the direct computation of the lane curvature radius in meters. The curvature is evaluated at the position of the car, hence `y_eval=720`, for the three example images above.
+Now we already have the polynomial coefficients $A$, $B$ and $C$ returned from the function call `findLanes_windowed()` in the correct units. The $x$ position of the lane is given by
+
+$L(y)=Ay^2+By+C$.
+
+This allows for the direct computation of the lane curvature radius $R$ in meters. The curvature is evaluated at the position of the car, hence `y_eval=720`, for the three example images above.
+
+\begin{equation}
+R^\pm = \frac{\left[1+L'(y_{eval})^2\right]^{3/2}}{L''(y_{eval})} = \frac{\left[1+(2Ay_{eval}+B)^2\right]^{3/2}}{2A}, ~~~~~ R=\vert R^\pm \vert
+\end{equation}
 
 The values for the unit conversion are chosen as
 
 - 3.7m per 700 pixels in x direction (default value from the lesson, matches very nicely with the straight lanes image)
 - 3m per 50 pixels in y direction (estimated from looking at the warped color image of the straight lane, the dashed lane lines are assumed to be 3 meters long).
 
-In addition, I compute the position of the vehicle in meters, relative to the lane center. As specified in the rubric, I have to look for the difference of the midpoint of the lane from the center of the image. Therefore I evaluate the polynomials at the position of the car.
+$R^\pm$ not only  gives the curvature radius, but by means of its sign also the direction.T
+
+In addition, I compute the position $P$ of the vehicle in meters, relative to the lane center. As specified in the rubric, I have to look for the difference of the midpoint of the lane from the center $w/2$ of the image, where $w$ is its width. Therefore I evaluate the polynomials at the position of the car
+
+\begin{equation}
+P=\frac w 2 - \frac 1 2 (L_{left}(y_{eval}) + L_{right}(y_{eval})).
+\end{equation}
 
 
 
@@ -719,12 +754,70 @@ for i in (0,1,2):
 
 ```
 
-    Radius:  9394.78920688 m 36980.7997028 m; Pos. Car:  -0.0863820282633 m
-    Radius:  915.930496963 m 958.423424473 m; Pos. Car:  -0.289145885587 m
-    Radius:  413.901367236 m 259.477498543 m; Pos. Car:  -0.257836678498 m
+    Radius:  15060.0573927 m 110098.844482 m; Pos. Car:  -0.0956835583676 m
+    Radius:  1328.98421934 m 1075.94044105 m; Pos. Car:  -0.330563058334 m
+    Radius:  449.762353333 m 522.42801703 m; Pos. Car:  -0.101894435509 m
 
 
 The values for the curvature radius look reasonable; for the straight lanes it could even be infinite, the second one with curvature is in a reasonable range (compare [U.S. government specifications for highway curvature](http://onlinemanuals.txdot.gov/txdotmanuals/rdw/horizontal_alignment.htm#BGBHGEGC)), for the third one the computed radius is too small, which fits with the not so nice performance of the lane detection.
+
+Just for completeness: Distance $D$ of the two lanes at the position of the car is
+
+\begin{equation}
+D = L_{right}(y_{eval})-L_{left}(y_{eval}), 
+\end{equation}
+
+and we can compute a rotation angle $\alpha$ of the lane against the vertical by first computing the slope of the lane function at the position of the car
+
+$L'(y_{eval})=2Ay_{eval}+B$,
+
+then
+
+\begin{equation}
+\alpha = \arcsin(2Ay_{eval}+B).
+\end{equation}
+
+We now have 6 numbers: lane distance $D$, car position $P$ relative to the midpoint of the lane, left and right lane curvature $R^\pm_{left}$, $R^\pm_{right}$, and left and right angle $\alpha_{left}$ and $\alpha_{right}$. These numbers can be used to completely determine the two 2nd order polynomials describing the lanes:
+
+\begin{eqnarray}
+w-2P&=& L_{right}(y_{eval}) + L_{left}(y_{eval}), \\
+D &=& L_{right}(y_{eval})-L_{left}(y_{eval}) \\
+\Rightarrow ~~~~~ 
+L_{right}(y_{eval}) &=& \frac 1 2 (w-2P+D) = A_{right}y_{eval}^2 + B_{right} y_{eval} + C_{right}, \\
+L_{left}(y_{eval}) &=& \frac 1 2 (w-2P-D) = A_{left}y_{eval}^2 + B_{left} y_{eval} + C_{left};
+\end{eqnarray}
+
+furthermore, from angles $\alpha$ we can derive
+
+\begin{eqnarray}
+L'_{right}(y_{eval}) &=& \sin(\alpha_{right}) = 2A_{right} y_{eval} + B_{right}, \\
+L'_{left}(y_{eval}) &=& \sin(\alpha_{left}) = 2A_{left} y_{eval} + B_{left}.
+\end{eqnarray}
+
+Finally, we get the second derivative of the lane functions as
+
+\begin{eqnarray}
+L''_{right}(y_{eval}) &=& \frac{\left[1+L_{right}'(y_{eval})^2\right]^{3/2}}{R_{right}^\pm}
+  = \frac{\left[1+\sin(\alpha_{right})^2\right]^{3/2}}{R_{right}^\pm} = 2A_{right}, \\
+L''_{left}(y_{eval}) &=& \frac{\left[1+L_{left}'(y_{eval})^2\right]^{3/2}}{R_{left}^\pm}
+  = \frac{\left[1+\sin(\alpha_{left})^2\right]^{3/2}}{R_{left}^\pm} = 2A_{left}.
+\end{eqnarray}
+
+Hence,
+
+\begin{eqnarray}
+  A &=& \frac{\left[1+\sin(\alpha)^2\right]^{3/2}}{2R^\pm}, ~~ B = \sin(\alpha) - 2A y_{eval},
+\end{eqnarray}
+
+for left and right, and
+\begin{eqnarray}
+  C_{right} &=& \frac 1 2 (w-2P+D) - A_{right}y_{eval}^2 - B_{right} y_{eval}, \\
+  C_{left}  &=& \frac 1 2 (w-2P-D) - A_{left}y_{eval}^2 - B_{left} y_{eval}.
+\end{eqnarray}
+
+Now, what is the profit of this forward and backward transformation between polynomial coefficients on the one hand and lane distance, car position, angles and curvature radii on the other hand? Well, I dont know yet... at least I have some intuition about the latter, which I do not have that much for the coefficients. There is the idea that for analyzing the video, it might help to have some intuition about the numbers. Neither the angle $\alpha$, nor the radius $R$ should jump, they should be comparable for the left and the right lane line, the distance of the lane lines should be more or less constant, and the car's position relative to the lane lines should be somewhat related to the angle $\alpha$ and to the car's speed... oups, we do not know the latter. And the steering angle or the turning radius of the car would also help. 
+
+Python functions for performing the transformations coefficients <=> parameters can be found in `helpers.py`, called `toParam()` and `toCoeff()`.
 
 ### Visualization
 - Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
@@ -749,27 +842,265 @@ for i in (0,1,2):
     nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
     img = drawLane3d(undistTestImages[I[i]], left_fit, right_fit, unwarpFun)
     plt.subplot(3, 2, 2+i*2)
+
     plt.imshow(bgr_rgb(img))
     
 
 ```
 
 
-![png](output_51_0.png)
+![png](output_53_0.png)
 
-
-:-)
 
 ## Pipeline (Video)
 ---
 - Provide a link to your final video output. Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!)
 
-Before processing the video, I want to add memory to ...
+Before processing the video, I define a class to store the properties of the lane lines. Internally, I use lane distance, relative position of the car, left/right curvature radius, left/right angle alpha. The class permits various parameter transformations, including back to the polynomial coefficients (`toCoeff()`). There is as seconde `toCoeff2()`, which transforms to polynomial coefficients of a polynomial with reversed y coordinate (0 is at the bottom of the image).
+
+
+```python
+from helpers import toParam, toCoeff
+
+# Define a class to receive the characteristics of each line detection
+class LaneLines():
+    def __init__(self, coeff=None, coeff2=None, params=None):
+        if coeff2:
+            lc2=coeff2[0]; rc2=coeff2[1]
+            lc=[lc2[0], -(2*lc2[0]*720*3/50+lc2[1]), lc2[0]*(720*3/50)**2+lc2[1]*720*3/50+lc2[2]]
+            rc=[rc2[0], -(2*rc2[0]*720*3/50+rc2[1]), rc2[0]*(720*3/50)**2+rc2[1]*720*3/50+rc2[2]]
+            coeff=[lc, rc]
+        if coeff:
+            pos_car, dist_lanes, alpha_left, alpha_right, left_curverad_pm, right_curverad_pm = toParam(coeff[0], coeff[1])
+            self.pos_car=pos_car
+            self.dist_lanes=dist_lanes
+            self.alpha_left=alpha_left
+            self.alpha_right=alpha_right
+            self.curverad_left=left_curverad_pm
+            self.curverad_right=right_curverad_pm
+        elif params:
+            self.pos_car=params[0]
+            self.dist_lanes=params[1]
+            self.alpha_left=params[2]
+            self.alpha_right=params[3]
+            self.curverad_left=params[4]
+            self.curverad_right=params[5]
+        else:
+            self.pos_car=None
+            self.dist_lanes=None
+            self.alpha_left=None
+            self.alpha_right=None
+            self.curverad_left=None
+            self.curverad_right=None
+            
+    def toParam(self):
+        return self.pos_car, self.dist_lanes, self.alpha_left, self.alpha_right, self.curverad_left, self.curverad_right
+    
+    def toCoeff(self):
+        return toCoeff(self.pos_car, self.dist_lanes, self.alpha_left, self.alpha_right, self.curverad_left, self.curverad_right)
+    
+    def toCoeff2(self):
+        lc, rc=self.toCoeff()
+        lc2=[lc[0], -(2*lc[0]*720*3/50+lc[1]), lc[0]*(720*3/50)**2+lc[1]*720*3/50+lc[2]]
+        rc2=[rc[0], -(2*rc[0]*720*3/50+rc[1]), rc[0]*(720*3/50)**2+rc[1]*720*3/50+rc[2]]
+        return lc2, rc2
+        
+    def plausibleNew(self, newLaneLines):
+        new_coeff2=np.array(newLaneLines.toCoeff2())
+        nlc2=new_coeff2[0]; nrc2=new_coeff2[1]
+        old_coeff2=np.array(self.toCoeff2())
+        olc2=old_coeff2[0]; orc2=old_coeff2[1]
+        
+        sigma2=0.1; sigma0=0.001; sigma_alpha=np.pi/6
+        wl=np.exp(-0.5*((nlc2[2]-olc2[2])/sigma2)**2) * np.exp(
+            -0.5*(nlc2[0]/sigma0)**2) * np.exp( -0.5*(newLaneLines.alpha_left/sigma_alpha)**2 )
+        wr=np.exp(-0.5*((nrc2[2]-orc2[2])/sigma2)**2) * np.exp(
+            -0.5*(nrc2[0]/sigma0)**2) * np.exp( -0.5*(newLaneLines.alpha_right/sigma_alpha)**2 )
+        
+        wl=min(0.25, wl); wr=min(0.25, wr)
+        plc2=wl*nlc2+(1-wl)*olc2
+        prc2=wr*nrc2+(1-wr)*orc2
+        plaus_coeff2=np.array([plc2, prc2])
+        plausLaneLines=LaneLines(coeff2=plaus_coeff2.tolist())
+            
+#        if (unplaus_left+unplaus_right>1):
+#            print("-----------------------------------------------")
+#        print(plausLaneLines.toCoeff())
+            
+        return plausLaneLines
+        
+```
+
+
+```python
+b=binarypipeline(undistTestImages[5])
+warped = warpFun(b)
+nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit5, right_fit5 = findLanes_windowed(warped)
+b=binarypipeline(undistTestImages[6])
+warped = warpFun(b)
+nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit6, right_fit6 = findLanes_windowed(warped)
+
+ll5 = LaneLines(coeff=[left_fit5, right_fit5])
+ll6 = LaneLines(coeff=[left_fit6, right_fit6])
+llProb = ll5.plausibleNew(ll6)
+ll5.__dict__, ll6.__dict__, llProb.__dict__
+
+#lc, rc=llProb.toCoeff()
+#img = drawLane3d(undistTestImages[5], lc, rc, unwarpFun)
+#plt.imshow(bgr_rgb(img))
+
+```
+
+
+
+
+    ({'alpha_left': -0.00030284136507442852,
+      'alpha_right': -0.0093455199692488843,
+      'curverad_left': 1328.9842193393802,
+      'curverad_right': 1075.9404410527061,
+      'dist_lanes': 3.7118800534738692,
+      'pos_car': -0.33056305833376998},
+     {'alpha_left': 0.010493880939986272,
+      'alpha_right': -0.024028924218544353,
+      'curverad_left': 449.76235333291095,
+      'curverad_right': -522.42801702953955,
+      'dist_lanes': 3.9470927311100761,
+      'pos_car': -0.10189443550923194},
+     {'alpha_left': -0.00028835335836160968,
+      'alpha_right': -0.013016058457576024,
+      'curverad_left': 1325.5061996127909,
+      'curverad_right': 4583.975931287128,
+      'dist_lanes': 3.6845791534256525,
+      'pos_car': -0.31644793735626964})
+
+
+
+
+```python
+# Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+
+class ProcessImage():
+    def __init__(self, text_file):
+        self.oldLaneLines=None
+        self.text_file=text_file
+    def __call__(self, image):
+        # NOTE: The output you return should be a color image (3 channel) for processing video below
+        # TODO: put your pipeline here,
+        # you should return the final output (image with lines are drawn on lanes)
+        bgr=rgb_bgr(image)
+        b=binarypipeline(bgr)
+        warped = warpFun(b)
+        if self.oldLaneLines:
+            lc, rc = self.oldLaneLines.toCoeff()
+            try:
+                nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_reuse(
+                    warped, lc, rc)
+            except:
+                print("exception happened!", file=self.text_file)
+                nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
+        else:
+            nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
+            
+        newLaneLines=LaneLines(coeff=[left_fit, right_fit])
+        if self.oldLaneLines:
+            probLaneLines=self.oldLaneLines.plausibleNew(newLaneLines)
+            lc, rc=probLaneLines.toCoeff()
+            if ((abs(lc[0])>0.001) | (abs(rc[0])>0.001)):
+                print("unplausible high curvature!", file=self.text_file)
+                nonzerox, nonzeroy, left_lane_inds, right_lane_inds, left_fit, right_fit = findLanes_windowed(warped)
+                newLaneLines=LaneLines(coeff=[left_fit, right_fit])
+                lc, rc=newLaneLines.toCoeff()
+                if ((abs(lc[0])>0.0015) != (abs(rc[0])>0.0015)):
+                    pos_car,dist_lanes,alpha_left,alpha_right,curverad_left,curverad_right=newLaneLines.toParam()
+                    if (abs(lc[0])>0.0015):
+                        alpha_left=alpha_right
+                        curverad_left=curverad_right
+                    else:
+                        alpha_right=alpha_left
+                        curverad_right=curverad_left
+                    newLaneLines=LaneLines(params=[pos_car,dist_lanes,alpha_left,alpha_right,curverad_left,curverad_right])
+                    
+                probLaneLines=self.oldLaneLines.plausibleNew(newLaneLines)
+                        
+        else:
+            probLaneLines=newLaneLines
+            
+        lc, rc=probLaneLines.toCoeff()
+        result = drawLane3d(bgr, lc, rc, unwarpFun)
+        statimg=drawLanes_warped(warped, nonzerox, nonzeroy, left_lane_inds, right_lane_inds, lc, rc)
+        lc2, rc2 = probLaneLines.toCoeff2()
+        print(lc2, rc2, file=self.text_file)
+        pos_car,dist_lanes,alpha_left,alpha_right,curverad_left,curverad_right=probLaneLines.toParam()
+        curverad=0.5*(curverad_left+curverad_right)
+        
+        statimg=cv2.resize(statimg, None, fx=1/3, fy=1/3)
+        y_offset=50; x_offset=result.shape[1]-statimg.shape[1]-80
+        result[y_offset:y_offset+statimg.shape[0], x_offset:x_offset+statimg.shape[1]] = statimg
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(result,"R = {0}".format(curverad),(50,100), font, 1,(255,255,255),2)
+        cv2.putText(result,"pos = {0}".format(pos_car),(50,150), font, 1,(255,255,255),2)
+
+        self.oldLaneLines=probLaneLines
+        return bgr_rgb(result)
+
+video_output = 'project_video_out.mp4'
+clip1 = VideoFileClip("project_video.mp4")
+
+text_file = open("Output.txt", "w")
+process_image=ProcessImage(text_file)
+white_clip = clip1.fl_image(process_image) #NOTE: this function expects color images!!
+%time white_clip.write_videofile(video_output, audio=False)
+text_file.close()
+
+```
+
+    [MoviePy] >>>> Building video project_video_out.mp4
+    [MoviePy] Writing video project_video_out.mp4
+
+
+    100%|█████████▉| 1260/1261 [03:54<00:00,  5.71it/s]
+
+
+    [MoviePy] Done.
+    [MoviePy] >>>> Video ready: project_video_out.mp4 
+    
+    CPU times: user 12min 43s, sys: 1.63 s, total: 12min 44s
+    Wall time: 3min 54s
+
 
 ## Discussion
 ---
 
 - Briefly discuss any problems / issues you faced in your implementation of this project. Where will your pipeline likely fail? What could you do to make it more robust?
+
+Problems really started when processing the video. It was really hard to figure out how I could make the detection stable in tricky situations, like shadows or dirt on the street. I gained much stability by introducing the `findLanes_reuse()` function, which looks for the lane line close to the polynomial from the last step. Furthermore, some weighted filtering of new and old coefficients helped. Furthermore, it was very important to increase the `minpix` parameter for the `findLanes_windowed()` function in order to make it more robust against noise.
+
+For the video processing, I also implemented some plausibility checks. I inspected the numbers and found it highly unlikely, that the highest polynomial order coefficient exceeds the value 0.001. In that case I used to re-initialize by reverting back to the `findLanes_windowed()`. If the problem remained, I took curvature radius and alpha from the opposite lane lane, if there were plausible values to be found. Finally I reduced the lower threshold for the saturation component, which made the lane lines more prominent under bad lighning conditions.
+
+Due to the hand-craftet parameters, like `minpixels`, saturation threshold, and gradient thresholds, it is very likely that the pipeline will fail under different lighning/weather conditions, and in case there appear different other gradients on the street as in the case of `challenge_video.mp4`: here, the conditions on the street introduce additional vertical gradients. Furthermore, the plausibiliy checks restrict the lane curvature, which will make it impossible to run the pipeline on streets with small curvature radius.
+
+My feeling about possible improvements is that it is absolute essential to improve the image preprocessing. Highlighting the lane line pixels accurately is the key, 
+
+
+```python
+from IPython.display import HTML
+HTML("""
+<video width="960" height="540" controls>
+  <source src="{0}">
+</video>
+""".format(video_output))
+```
+
+
+
+
+
+<video width="960" height="540" controls>
+  <source src="project_video_out.mp4">
+</video>
+
 
 
 
