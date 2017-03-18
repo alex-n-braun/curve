@@ -17,6 +17,7 @@ The goals / steps of this project are the following:
 ## Contents of the Submission
 ---
 The submission containes the following files and folders.
+
 1. `README.md`, along with several `output*.png` files containing the graphics. 
 2. `main.ipynb`, the notebook containing the documentation and sources. 
 3. `helpers.py`, several shortcuts for color space transforms and some more things
@@ -281,6 +282,7 @@ for i in (0,1):
 
 #### Color Space Transforms
 As discussed in the course, by just transforming to gray scale, much information may be lost. Instead, here I use color space transfomations in order to preserve valuable information as value, saturation or lightness. The next image sequence displays
+
 1. original image
 2. grayscale image
 3. saturation channel of the hls transform
@@ -405,6 +407,7 @@ for i in (0,1,2):
 - Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
 I perform the following steps:
+
 1. Choose an image with straight lane lines. Choose four points in a trapezoidal shape (see `srcdst()` in `pipeline.py`)
 2. Compute the perspective transformation matrix using the opencv function getPerspectiveTransform (see `warpFactory()`, `unwarpFactory()` in `pipeline.py`)
 3. Create sample images applying the perspective transform.
@@ -494,6 +497,7 @@ for i in (0,1,2):
 - Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial
 
 For further developing the pipeline, I use `straight_lines1.jpg`. I take the following steps, that are described in the lesson. The code is in large parts taken from the lessen.
+
 1. Find the two lanes using a histogram. 
 2. Apply windowing to distinguish non-zero lane pixels from non-zero other pixels. Add the pixel positions to a list.
 3. Perform a second order polynomial fit to get lane slope and curvature.
@@ -820,6 +824,7 @@ Now, what is the profit of this forward and backward transformation between poly
 Python functions for performing the transformations coefficients <=> parameters can be found in `helpers.py`, called `toParam()` and `toCoeff()`.
 
 ### Visualization
+
 - Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
 Again I take a code snippet I found in the lessons material. Drawing the lane marking on the image is done in the function `drawLane3d()` in `pipeline.py`.
